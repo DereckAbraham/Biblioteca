@@ -27,3 +27,8 @@ void Libro::mostrarInformacion() const {
               << "\n📂 Categoría: " << categoria
               << "\n📦 Cantidad: " << cantidad << "\n";
 }
+  /* 
+CREATE BY: D2007
+.-'--`-._
+'-O---O--'
+*/

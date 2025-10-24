@@ -24,3 +24,8 @@ void Usuario::mostrarInformacion() const {
               << "\n📧 Correo: " << correo
               << "\n📱 Teléfono: " << telefono << "\n";
 }
+  /* 
+CREATE BY: D2007
+.-'--`-._
+'-O---O--'
+*/

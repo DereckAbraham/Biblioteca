@@ -33,15 +33,23 @@ public:
     void buscarUsuario();
 
     // ===== Préstamos =====
-    void realizarPrestamo();            // pide fecha préstamo
-    void registrarDevolucion();         // pide fecha devolución, calcula multa
+    void realizarPrestamo();            // pide fecha préstamo (valida)
+    void registrarDevolucion();         // pide fecha devolución (valida y calcula multa)
     void listarPrestamosActivos();
     void historialPrestamosPorUsuario();
 
     // ===== Reportes y Estadísticas =====
-    void reporteLibrosMasPrestados(int topN = 5);           // Top fijo 5 (parámetro ignorado)
-    void reporteUsuariosConMasPrestamos(int topN = 5);      // Top fijo 5 (parámetro ignorado)
-    void reporteLibrosBajaDisponibilidad(int umbral = 2);
+    void reporteLibrosMasPrestados(int topN = 5);           // Top 5 fijo
+    void reporteUsuariosConMasPrestamos(int topN = 5);      // Top 5 fijo
+    void reporteLibrosBajaDisponibilidad(int umbral = 2);   // Top por disponibilidad (todos)
+
+    // ===== Exportar todo a TXT =====
+    void exportarResumenTXT(const std::string& filename = "reporte_biblioteca.txt");
 };
 
 #endif
+  /* 
+CREATE BY: D2007
+.-'--`-._
+'-O---O--'
+*/

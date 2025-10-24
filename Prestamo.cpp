@@ -17,3 +17,8 @@ double Prestamo::getMulta() const { return multa; }
 void Prestamo::setFechaDevolucion(const std::string& f) { fechaDevolucion = f; }
 void Prestamo::setActivo(bool a)  { activo = a; }
 void Prestamo::setMulta(double m) { multa = m; }
+  /* 
+CREATE BY: D2007
+.-'--`-._
+'-O---O--'
+*/

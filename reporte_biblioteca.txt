@@ -1,0 +1,28 @@
+SISTEMA DE BIBLIOTECA - REPORTE COMPLETO
+================================================================================
+
+[LIBROS REGISTRADOS]
+--------------------------------------------------------------------------------
+(Sin libros)
+
+[USUARIOS REGISTRADOS]
+--------------------------------------------------------------------------------
+(Sin usuarios)
+
+[PRESTAMOS]
+--------------------------------------------------------------------------------
+(Sin prestamos)
+
+[ESTADISTICAS]
+--------------------------------------------------------------------------------
+
+- Top 5 Libros mas prestados:
+(Sin datos de prestamos)
+
+- Top 5 Usuarios con mas prestamos:
+(Sin datos de prestamos)
+
+- Top por disponibilidad (mayor -> menor):
+(Sin libros)
+
+(Fin del reporte)

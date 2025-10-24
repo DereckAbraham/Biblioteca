@@ -8,10 +8,11 @@
 #include <unordered_map>
 #include <limits>
 #include <vector>
+#include <fstream>
+
 using namespace std;
 
 // ========================= Helpers de IMPRESIÓN (TABLAS) =========================
-// Funciones libres (NO son métodos de la clase)
 static void printSep(const vector<int>& W, char ch='-') {
     for (int w : W) { cout << '+' << string(w, ch); }
     cout << "+\n";
@@ -24,7 +25,7 @@ static void printRow(const vector<string>& cols, const vector<int>& W) {
 }
 static string boolStr(bool v) { return v ? "Sí" : "No"; }
 
-// ========================= Helpers de FECHA =========================
+// ========================= Helpers de FECHA y VALIDACIÓN =========================
 // Espera formato "DD/MM/YYYY"
 static tm parseDate(const string& ddmmyyyy) {
     tm t{}; t.tm_isdst = -1;
@@ -34,6 +35,15 @@ static tm parseDate(const string& ddmmyyyy) {
         t.tm_year = stoi(ddmmyyyy.substr(6,4)) - 1900;
     }
     return t;
+}
+static bool validarFechaBasica(const string& f) {
+    if (f.size()!=10 || f[2]!='/' || f[5]!='/') return false;
+    auto isdig=[&](char c){ return c>='0'&&c<='9'; };
+    for (int i : {0,1,3,4,6,7,8,9}) if (!isdig(f[i])) return false;
+    int d=stoi(f.substr(0,2)), m=stoi(f.substr(3,2)), y=stoi(f.substr(6,4));
+    if (y<1900||y>2100||m<1||m>12) return false;
+    int md[]{31, ((y%4==0&&y%100!=0)||(y%400==0))?29:28,31,30,31,30,31,31,30,31,30,31};
+    return d>=1 && d<=md[m-1];
 }
 static long daysBetween(const string& d1, const string& d2) {
     tm t1 = parseDate(d1);
@@ -239,9 +249,17 @@ void SistemaBiblioteca::realizarPrestamo() {
     cout << "ISBN del Libro: "; getline(cin, isbn);
     cout << "Fecha de préstamo (DD/MM/YYYY): "; getline(cin, fechaPrestamo);
 
+    if (!validarFechaBasica(fechaPrestamo)) { cout << "❌ Fecha inválida.\n"; return; }
+
     int iu = buscarUsuarioPorID(idUsuario);  if (iu == -1) { cout << "❌ Usuario no encontrado.\n"; return; }
     int il = buscarLibroPorISBN(isbn);       if (il == -1) { cout << "❌ Libro no encontrado.\n"; return; }
     if (libros[il].getCantidad() <= 0) { cout << "❌ No hay ejemplares disponibles.\n"; return; }
+
+    // Límite de 3 préstamos activos por usuario
+    int activosUsuario = 0;
+    for (const auto& p : prestamos)
+        if (p.getIdUsuario() == idUsuario && p.isActivo()) ++activosUsuario;
+    if (activosUsuario >= 3) { cout << "❌ Límite alcanzado: máximo 3 préstamos activos por usuario.\n"; return; }
 
     string idPrestamo = "PRE-" + to_string(10000 + rand() % 90000);
     prestamos.push_back(Prestamo(idPrestamo, idUsuario, isbn, fechaPrestamo));
@@ -281,6 +299,7 @@ void SistemaBiblioteca::registrarDevolucion() {
 
     cout << "Fecha de devolución (DD/MM/YYYY): ";
     string fechaDev; getline(cin, fechaDev);
+    if (!validarFechaBasica(fechaDev)) { cout << "❌ Fecha inválida.\n"; return; }
 
     prestamos[ip].setFechaDevolucion(fechaDev);
     prestamos[ip].setActivo(false);
@@ -505,3 +524,221 @@ void SistemaBiblioteca::reporteUsuariosConMasPrestamos(int /*topN*/) {
     }
     printSep(W);
 }
+
+// ======================= EXPORTAR TODO A TXT =======================
+void SistemaBiblioteca::exportarResumenTXT(const string& filename) {
+    ofstream out(filename);
+    if (!out) {
+        cout << "❌ No se pudo abrir el archivo: " << filename << "\n";
+        return;
+    }
+
+    auto line = [&](char ch='=', int n=80){ out << string(n, ch) << "\n"; };
+
+    out << "SISTEMA DE BIBLIOTECA - REPORTE COMPLETO\n";
+    line('=');
+
+    // ---- Libros
+    out << "\n[LIBROS REGISTRADOS]\n";
+    line('-');
+    if (libros.empty()) out << "(Sin libros)\n";
+    else {
+        out << left << setw(16) << "ISBN"
+                     << setw(30) << "Titulo"
+                     << setw(22) << "Autor"
+                     << setw(6)  << "Anio"
+                     << setw(16) << "Categoria"
+                     << setw(8)  << "Cant" << "\n";
+        line('-');
+        for (const auto& L : libros) {
+            out << left << setw(16) << L.getISBN()
+                        << setw(30) << L.getTitulo()
+                        << setw(22) << L.getAutor()
+                        << setw(6)  << L.getAnio()
+                        << setw(16) << L.getCategoria()
+                        << setw(8)  << L.getCantidad() << "\n";
+        }
+    }
+
+    // ---- Usuarios
+    out << "\n[USUARIOS REGISTRADOS]\n";
+    line('-');
+    if (usuarios.empty()) out << "(Sin usuarios)\n";
+    else {
+        out << left << setw(12) << "ID"
+                     << setw(22) << "Nombre"
+                     << setw(18) << "Carrera"
+                     << setw(28) << "Correo"
+                     << setw(14) << "Telefono" << "\n";
+        line('-');
+        for (const auto& U : usuarios) {
+            out << left << setw(12) << U.getId()
+                        << setw(22) << U.getNombre()
+                        << setw(18) << U.getCarrera()
+                        << setw(28) << U.getCorreo()
+                        << setw(14) << U.getTelefono() << "\n";
+        }
+    }
+
+    // ---- Prestamos (todos)
+    out << "\n[PRESTAMOS]\n";
+    line('-');
+    if (prestamos.empty()) out << "(Sin prestamos)\n";
+    else {
+        out << left << setw(14) << "ID_Prestamo"
+                     << setw(12) << "ID_User"
+                     << setw(14) << "ISBN"
+                     << setw(12) << "Prestado"
+                     << setw(12) << "Devuelto"
+                     << setw(8)  << "Activo"
+                     << setw(8)  << "Multa" << "\n";
+        line('-');
+
+        ostringstream multaFmt;
+        for (const auto& P : prestamos) {
+            multaFmt.str(""); multaFmt.clear();
+            multaFmt << fixed << setprecision(2) << P.getMulta();
+
+            out << left << setw(14) << P.getIdPrestamo()
+                        << setw(12) << P.getIdUsuario()
+                        << setw(14) << P.getISBN()
+                        << setw(12) << P.getFechaPrestamo()
+                        << setw(12) << (P.getFechaDevolucion().empty() ? "-" : P.getFechaDevolucion())
+                        << setw(8)  << (P.isActivo() ? "Si" : "No")
+                        << setw(8)  << multaFmt.str() << "\n";
+        }
+    }
+
+    // ---- Estadísticas
+    out << "\n[ESTADISTICAS]\n";
+    line('-');
+
+    // Top 5 Libros más prestados
+    {
+        unordered_map<string,int> freq;
+        for (const auto& p : prestamos) freq[p.getISBN()]++;
+
+        out << "\n- Top 5 Libros mas prestados:\n";
+        if (freq.empty()) out << "(Sin datos de prestamos)\n";
+        else {
+            vector<pair<string,int>> items(freq.begin(), freq.end());
+            sort(items.begin(), items.end(), [](auto&a, auto&b){
+                if (a.second != b.second) return a.second > b.second;
+                return a.first < b.first;
+            });
+            int toShow = static_cast<int>(min<size_t>(5, items.size()));
+            out << left << setw(6)  << "Rank"
+                        << setw(16) << "ISBN"
+                        << setw(30) << "Titulo"
+                        << setw(22) << "Autor"
+                        << setw(6)  << "Anio"
+                        << setw(16) << "Categoria"
+                        << setw(10) << "Prestamos" << "\n";
+            line('-');
+            for (int i=0;i<toShow;++i) {
+                const string& isbn = items[i].first;
+                int count = items[i].second;
+                int il = buscarLibroPorISBN(isbn);
+                string titulo="-", autor="-", categoria="-"; int anio=0;
+                if (il!=-1){ titulo=libros[il].getTitulo(); autor=libros[il].getAutor(); categoria=libros[il].getCategoria(); anio=libros[il].getAnio(); }
+                string rank = to_string(i+1);
+                if (i==0) rank += " (mejor)";
+                if (i==toShow-1) rank += " (peor)";
+                out << left << setw(6)  << rank
+                            << setw(16) << isbn
+                            << setw(30) << titulo
+                            << setw(22) << autor
+                            << setw(6)  << anio
+                            << setw(16) << categoria
+                            << setw(10) << count << "\n";
+            }
+        }
+    }
+
+    // Top 5 Usuarios con más préstamos
+    {
+        unordered_map<string,int> freq;
+        for (const auto& p : prestamos) freq[p.getIdUsuario()]++;
+
+        out << "\n- Top 5 Usuarios con mas prestamos:\n";
+        if (freq.empty()) out << "(Sin datos de prestamos)\n";
+        else {
+            vector<pair<string,int>> items(freq.begin(), freq.end());
+            sort(items.begin(), items.end(), [](auto&a, auto&b){
+                if (a.second != b.second) return a.second > b.second;
+                return a.first < b.first;
+            });
+            int toShow = static_cast<int>(min<size_t>(5, items.size()));
+            out << left << setw(6)  << "Rank"
+                        << setw(12) << "ID"
+                        << setw(22) << "Nombre"
+                        << setw(18) << "Carrera"
+                        << setw(28) << "Correo"
+                        << setw(14) << "Telefono"
+                        << setw(10) << "Prestamos" << "\n";
+            line('-');
+            for (int i=0;i<toShow;++i) {
+                const string& idU = items[i].first;
+                int count = items[i].second;
+                int iu = buscarUsuarioPorID(idU);
+                string nombre="-", carrera="-", correo="-", telefono="-";
+                if (iu!=-1){ nombre=usuarios[iu].getNombre(); carrera=usuarios[iu].getCarrera(); correo=usuarios[iu].getCorreo(); telefono=usuarios[iu].getTelefono(); }
+                string rank = to_string(i+1);
+                if (i==0) rank += " (mejor)";
+                if (i==toShow-1) rank += " (peor)";
+                out << left << setw(6)  << rank
+                            << setw(12) << idU
+                            << setw(22) << nombre
+                            << setw(18) << carrera
+                            << setw(28) << correo
+                            << setw(14) << telefono
+                            << setw(10) << count << "\n";
+            }
+        }
+    }
+
+    // Top por disponibilidad (todos)
+    {
+        out << "\n- Top por disponibilidad (mayor -> menor):\n";
+        if (libros.empty()) out << "(Sin libros)\n";
+        else {
+            vector<int> idx(libros.size());
+            for (size_t i=0;i<libros.size();++i) idx[i]=static_cast<int>(i);
+            sort(idx.begin(), idx.end(), [&](int a, int b){
+                if (libros[a].getCantidad() != libros[b].getCantidad())
+                    return libros[a].getCantidad() > libros[b].getCantidad();
+                return libros[a].getTitulo() < libros[b].getTitulo();
+            });
+            out << left << setw(6)  << "Rank"
+                        << setw(16) << "ISBN"
+                        << setw(30) << "Titulo"
+                        << setw(22) << "Autor"
+                        << setw(6)  << "Anio"
+                        << setw(16) << "Categoria"
+                        << setw(8)  << "Cant" << "\n";
+            line('-');
+            for (int i=0; i<(int)idx.size(); ++i) {
+                const auto& L = libros[idx[i]];
+                string rank = to_string(i+1);
+                if (i==0) rank += " (mejor)";
+                if (i==(int)idx.size()-1) rank += " (peor)";
+                out << left << setw(6)  << rank
+                            << setw(16) << L.getISBN()
+                            << setw(30) << L.getTitulo()
+                            << setw(22) << L.getAutor()
+                            << setw(6)  << L.getAnio()
+                            << setw(16) << L.getCategoria()
+                            << setw(8)  << L.getCantidad() << "\n";
+            }
+        }
+    }
+
+    out << "\n(Fin del reporte)\n";
+    out.close();
+    cout << "📝 Reporte generado: " << filename << "\n";
+}
+  /* 
+CREATE BY: D2007
+.-'--`-._
+'-O---O--'
+*/
