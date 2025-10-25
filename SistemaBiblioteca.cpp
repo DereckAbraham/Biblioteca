@@ -9,6 +9,8 @@
 #include <limits>
 #include <vector>
 #include <fstream>
+#include <regex>
+#include <cctype>
 
 using namespace std;
 
@@ -25,25 +27,15 @@ static void printRow(const vector<string>& cols, const vector<int>& W) {
 }
 static string boolStr(bool v) { return v ? "Sí" : "No"; }
 
-// ========================= Helpers de FECHA y VALIDACIÓN =========================
-// Espera formato "DD/MM/YYYY"
+// ========================= Helpers de FECHA =========================
 static tm parseDate(const string& ddmmyyyy) {
     tm t{}; t.tm_isdst = -1;
     if (ddmmyyyy.size() == 10 && ddmmyyyy[2]=='/' && ddmmyyyy[5]=='/') {
         t.tm_mday = stoi(ddmmyyyy.substr(0,2));
-        t.tm_mon  = stoi(ddmmyyyy.substr(3,2)) - 1; // 0..11
+        t.tm_mon  = stoi(ddmmyyyy.substr(3,2)) - 1;
         t.tm_year = stoi(ddmmyyyy.substr(6,4)) - 1900;
     }
     return t;
-}
-static bool validarFechaBasica(const string& f) {
-    if (f.size()!=10 || f[2]!='/' || f[5]!='/') return false;
-    auto isdig=[&](char c){ return c>='0'&&c<='9'; };
-    for (int i : {0,1,3,4,6,7,8,9}) if (!isdig(f[i])) return false;
-    int d=stoi(f.substr(0,2)), m=stoi(f.substr(3,2)), y=stoi(f.substr(6,4));
-    if (y<1900||y>2100||m<1||m>12) return false;
-    int md[]{31, ((y%4==0&&y%100!=0)||(y%400==0))?29:28,31,30,31,30,31,31,30,31,30,31};
-    return d>=1 && d<=md[m-1];
 }
 static long daysBetween(const string& d1, const string& d2) {
     tm t1 = parseDate(d1);
@@ -53,7 +45,6 @@ static long daysBetween(const string& d1, const string& d2) {
     const long seconds_per_day = 60*60*24;
     return static_cast<long>((time2 - time1) / seconds_per_day);
 }
-// Multa = Q5 por día de retraso posterior a 7 días
 static double calcularMultaPrestamo(const string& fPrestamo, const string& fDevolucion) {
     long dias = daysBetween(fPrestamo, fDevolucion);
     long extra = dias - 7;
@@ -249,17 +240,14 @@ void SistemaBiblioteca::realizarPrestamo() {
     cout << "ISBN del Libro: "; getline(cin, isbn);
     cout << "Fecha de préstamo (DD/MM/YYYY): "; getline(cin, fechaPrestamo);
 
-    if (!validarFechaBasica(fechaPrestamo)) { cout << "❌ Fecha inválida.\n"; return; }
-
     int iu = buscarUsuarioPorID(idUsuario);  if (iu == -1) { cout << "❌ Usuario no encontrado.\n"; return; }
     int il = buscarLibroPorISBN(isbn);       if (il == -1) { cout << "❌ Libro no encontrado.\n"; return; }
     if (libros[il].getCantidad() <= 0) { cout << "❌ No hay ejemplares disponibles.\n"; return; }
 
     // Límite de 3 préstamos activos por usuario
-    int activosUsuario = 0;
-    for (const auto& p : prestamos)
-        if (p.getIdUsuario() == idUsuario && p.isActivo()) ++activosUsuario;
-    if (activosUsuario >= 3) { cout << "❌ Límite alcanzado: máximo 3 préstamos activos por usuario.\n"; return; }
+    int activos = 0;
+    for (const auto& p : prestamos) if (p.getIdUsuario()==idUsuario && p.isActivo()) activos++;
+    if (activos >= 3) { cout << "❌ Límite de 3 préstamos activos alcanzado.\n"; return; }
 
     string idPrestamo = "PRE-" + to_string(10000 + rand() % 90000);
     prestamos.push_back(Prestamo(idPrestamo, idUsuario, isbn, fechaPrestamo));
@@ -299,7 +287,6 @@ void SistemaBiblioteca::registrarDevolucion() {
 
     cout << "Fecha de devolución (DD/MM/YYYY): ";
     string fechaDev; getline(cin, fechaDev);
-    if (!validarFechaBasica(fechaDev)) { cout << "❌ Fecha inválida.\n"; return; }
 
     prestamos[ip].setFechaDevolucion(fechaDev);
     prestamos[ip].setActivo(false);
@@ -403,7 +390,7 @@ void SistemaBiblioteca::historialPrestamosPorUsuario() {
     if (!encontrado) cout << "Sin préstamos para ese usuario.\n";
 }
 
-// ======================= REPORTES: Top por disponibilidad (todos) =======================
+// ======================= REPORTES =======================
 void SistemaBiblioteca::reporteLibrosBajaDisponibilidad(int /*umbral*/) {
     cout << "\n=== Reporte: Top de Libros por Disponibilidad (mayor → menor) ===\n";
 
@@ -412,7 +399,6 @@ void SistemaBiblioteca::reporteLibrosBajaDisponibilidad(int /*umbral*/) {
         return;
     }
 
-    // Ordenamos índices por cantidad DESC y título ASC (desempate)
     vector<int> idx(libros.size());
     for (size_t i = 0; i < libros.size(); ++i) idx[i] = static_cast<int>(i);
     sort(idx.begin(), idx.end(), [&](int a, int b){
@@ -442,7 +428,6 @@ void SistemaBiblioteca::reporteLibrosBajaDisponibilidad(int /*umbral*/) {
     printSep(W);
 }
 
-// ======================= REPORTES: Top 5 fijo (libros / usuarios) =======================
 void SistemaBiblioteca::reporteLibrosMasPrestados(int /*topN*/) {
     cout << "\n=== Reporte: Libros más prestados (Top 5) ===\n";
 
@@ -737,8 +722,120 @@ void SistemaBiblioteca::exportarResumenTXT(const string& filename) {
     out.close();
     cout << "📝 Reporte generado: " << filename << "\n";
 }
-  /* 
-CREATE BY: D2007
-.-'--`-._
-'-O---O--'
-*/
+
+// ======================= IMPORTAR DESDE TXT (NUEVO) =======================
+// Nota: Lectura robusta por secciones. Usa separador de 2+ espacios para columnas.
+static inline string trim(const string& s){
+    size_t a = s.find_first_not_of(" \t\r\n");
+    size_t b = s.find_last_not_of(" \t\r\n");
+    if (a==string::npos) return "";
+    return s.substr(a, b-a+1);
+}
+static vector<string> splitCols2PlusSpaces(const string& line) {
+    // Divide por 2+ espacios consecutivos
+    static const regex re(R"(\s{2,})");
+    sregex_token_iterator it(line.begin(), line.end(), re, -1), end;
+    vector<string> out;
+    for (; it != end; ++it) {
+        string t = trim(it->str());
+        if (!t.empty()) out.push_back(t);
+    }
+    return out;
+}
+bool SistemaBiblioteca::cargarDesdeTXT(const string& rutaTXT) {
+    ifstream in(rutaTXT);
+    if (!in) return false;
+
+    libros.clear();
+    usuarios.clear();
+    prestamos.clear();
+
+    enum Sec { NONE, LIBROS_SEC, USUARIOS_SEC, PRESTAMOS_SEC, OTHER };
+    Sec sec = NONE;
+
+    string line;
+    bool headerPassed = false; // para saltar cabeceras y líneas de guiones en cada sección
+
+    auto toLower = [](string s){ for (char &c: s) c = static_cast<char>(tolower(c)); return s; };
+
+    while (std::getline(in, line)) {
+        string L = trim(line);
+        if (L.empty()) { continue; }
+
+        // Detectar cambio de sección por encabezado entre corchetes
+        if (!L.empty() && L.front()=='[' && L.back()==']') {
+            headerPassed = false;
+            string s = toLower(L);
+            if (s.find("libros registrados") != string::npos) sec = LIBROS_SEC;
+            else if (s.find("usuarios registrados") != string::npos) sec = USUARIOS_SEC;
+            else if (s.find("prestamos") != string::npos) sec = PRESTAMOS_SEC;
+            else sec = OTHER;
+            continue;
+        }
+
+        // Saltar líneas de títulos y de guiones tras entrar a sección
+        if (!headerPassed) {
+            // buscar una línea de cabecera (nombres de columnas) y la siguiente de guiones "----"
+            if (L.find("---") != string::npos) { headerPassed = true; }
+            else if (L.find("ISBN") != string::npos) { /* todavía viene línea de guiones */ }
+            else if (L.find("ID") != string::npos && sec!=LIBROS_SEC) { /* idem */ }
+            else if (L.find("ID_Prestamo") != string::npos) { /* idem */ }
+            continue;
+        }
+        if (L.find("---") != string::npos) continue; // líneas separadoras dentro de sección
+
+        // Procesar filas de datos según sección
+        if (sec == LIBROS_SEC) {
+            // Esperamos 6 columnas: ISBN, Titulo, Autor, Anio, Categoria, Cant
+            auto cols = splitCols2PlusSpaces(L);
+            if (cols.size() < 6) continue;
+            string isbn = cols[0];
+            string titulo = cols[1];
+            string autor = cols[2];
+            int anio = 0; try { anio = stoi(cols[3]); } catch(...) {}
+            string categoria = cols[4];
+            int cant = 0; try { cant = stoi(cols[5]); } catch(...) {}
+            libros.emplace_back(isbn, titulo, autor, anio, categoria, cant);
+        } else if (sec == USUARIOS_SEC) {
+            // Esperamos 5 columnas: ID, Nombre, Carrera, Correo, Telefono
+            auto cols = splitCols2PlusSpaces(L);
+            if (cols.size() < 5) continue;
+            usuarios.emplace_back(cols[0], cols[1], cols[2], cols[3], cols[4]);
+        } else if (sec == PRESTAMOS_SEC) {
+            // Esperamos 7 columnas: ID_Prestamo, ID_User, ISBN, Prestado, Devuelto, Activo, Multa
+            auto cols = splitCols2PlusSpaces(L);
+            if (cols.size() < 7) continue;
+            string idP = cols[0];
+            string idU = cols[1];
+            string isbn = cols[2];
+            string fP  = cols[3];
+            string fD  = (cols[4] == "-" ? "" : cols[4]);
+            string sActivo = toLower(cols[5]);
+            bool activo = (sActivo=="si" || sActivo=="sí" || sActivo=="yes" || sActivo=="true");
+            double multa = 0.0; try { multa = stod(cols[6]); } catch(...) {}
+
+            Prestamo p(idP, idU, isbn, fP);
+            p.setFechaDevolucion(fD);
+            p.setActivo(activo);
+            p.setMulta(multa);
+            prestamos.push_back(p);
+
+            // IMPORTANTE: ajustar stock del libro en función de préstamos activos
+            int il = buscarLibroPorISBN(isbn);
+            if (il != -1) {
+                // Si el préstamo está activo, significa que ese ejemplar está fuera → restar 1 si hay stock
+                if (activo) {
+                    int c = libros[il].getCantidad();
+                    if (c > 0) libros[il].setCantidad(c - 1);
+                } else {
+                    // si está devuelto, no tocamos la cantidad (suponemos export ya reflejó stock).
+                }
+            }
+        } else {
+            // Secciones ignoradas (estadísticas, etc.)
+            continue;
+        }
+    }
+
+    return true;
+}

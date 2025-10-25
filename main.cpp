@@ -41,10 +41,6 @@ static string ensureTxtExtension(string name) {
 }
 
 // Devuelve la ruta al Escritorio del usuario.
-// - Si existe ~/Escritorio lo usa.
-// - Si no, usa ~/Desktop.
-// - Si ninguno existe, crea ~/Desktop.
-// - Siempre termina con '/'.
 static std::string detectarEscritorioAuto() {
     const char* home = std::getenv("HOME");
     fs::path base = home ? fs::path(home) : fs::current_path();
@@ -52,23 +48,12 @@ static std::string detectarEscritorioAuto() {
     fs::path es = base / "Escritorio";
     fs::path en = base / "Desktop";
 
-    // 1) Preferir "Escritorio" si existe
-    if (fs::exists(es) && fs::is_directory(es)) {
-        return (es.string() + "/");
-    }
-    // 2) Si no, "Desktop" si existe
-    if (fs::exists(en) && fs::is_directory(en)) {
-        return (en.string() + "/");
-    }
-    // 3) Si ninguno existe, crear "Desktop"
+    if (fs::exists(es) && fs::is_directory(es)) return (es.string() + "/");
+    if (fs::exists(en) && fs::is_directory(en)) return (en.string() + "/");
+
     std::error_code ec;
-    if (!fs::exists(en)) {
-        fs::create_directories(en, ec);
-    }
-    // Si la creación falló, usar el directorio actual como último recurso
-    if (ec) {
-        return (fs::current_path().string() + "/");
-    }
+    if (!fs::exists(en)) fs::create_directories(en, ec);
+    if (ec) return (fs::current_path().string() + "/");
     return (en.string() + "/");
 }
 
@@ -159,6 +144,20 @@ int main() {
     srand(static_cast<unsigned>(time(nullptr)));
     SistemaBiblioteca sistema;
 
+    // --- NUEVO: preguntar si desea cargar datos desde un TXT (por ejemplo "ejemplos.txt")
+    cout << "¿Desea cargar datos desde un archivo TXT (por ejemplo, ejemplos.txt)? [s/N]: ";
+    string resp; getline(cin, resp);
+    if (!resp.empty() && (resp[0]=='s' || resp[0]=='S')) {
+        cout << "Ingrese el nombre del archivo (o ruta). Si está en esta carpeta, escriba solo el nombre: ";
+        string ruta; getline(cin, ruta);
+        if (ruta.empty()) ruta = "ejemplos.txt";
+        if (sistema.cargarDesdeTXT(ruta)) {
+            cout << "✅ Datos cargados desde \"" << ruta << "\".\n";
+        } else {
+            cout << "❌ No se pudieron cargar datos desde \"" << ruta << "\".\n";
+        }
+    }
+
     int opcion;
     do {
         opcion = menuTabla("SISTEMA DE BIBLIOTECA", {
@@ -181,17 +180,12 @@ int main() {
                 getline(cin, nombre);
                 nombre = ensureTxtExtension(nombre);
 
-                // Detectar Escritorio automáticamente (Escritorio/Desktop)
                 string escritorio = detectarEscritorioAuto();
                 string rutaCompleta = escritorio + nombre;
 
                 cout << "Guardando en: " << rutaCompleta << endl;
                 sistema.exportarResumenTXT(rutaCompleta);
                 cout << "✅ Archivo generado." << endl;
-
-                // (Opcional) abrir automáticamente el archivo generado:
-                // std::string cmd = "xdg-open \"" + rutaCompleta + "\" &";
-                // system(cmd.c_str());
                 break;
             }
             case 0: cout << "Saliendo del sistema...\n"; break;
@@ -201,11 +195,3 @@ int main() {
 
     return 0;
 }
-
-
-  /* 
-CREATE BY: D2007
-.-'--`-._
-'-O---O--'
-*/
-

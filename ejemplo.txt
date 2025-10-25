@@ -1,0 +1,87 @@
+SISTEMA DE BIBLIOTECA - REPORTE COMPLETO
+================================================================================
+
+[LIBROS REGISTRADOS]
+--------------------------------------------------------------------------------
+ISBN             Titulo                        Autor                   Anio  Categoria        Cant
+--------------------------------------------------------------------------------
+ISBN-120394      Cien años de soledad          Gabriel García Márquez   1967  Novela           3
+ISBN-220451      El principito                 Antoine de Saint-Exupéry 1943  Infantil         1
+ISBN-320581      Don Quijote de la Mancha      Miguel de Cervantes      1605  Clásico          0
+ISBN-420672      La sombra del viento          Carlos Ruiz Zafón        2001  Misterio         4
+ISBN-520723      Harry Potter y la piedra filosofal J.K. Rowling        1997  Fantasía         2
+ISBN-620899      El alquimista                 Paulo Coelho             1988  Filosofía        1
+ISBN-720954      El señor de los anillos       J.R.R. Tolkien           1954  Fantasía         5
+ISBN-820105      Crimen y castigo              Fiódor Dostoyevski       1866  Drama            2
+ISBN-920206      La Odisea                     Homero                   -800  Épico            3
+ISBN-102307      Orgullo y prejuicio           Jane Austen              1813  Romance          4
+
+[USUARIOS REGISTRADOS]
+--------------------------------------------------------------------------------
+ID          Nombre               Carrera            Correo                     Telefono
+--------------------------------------------------------------------------------
+USR-10001   Ana López            Ingeniería         ana.lopez@umg.edu.gt       55670011
+USR-10002   Luis Martínez        Arquitectura       lmartinez@umg.edu.gt       55789022
+USR-10003   Sofía Pérez          Derecho            sofia.perez@umg.edu.gt     55441133
+USR-10004   Carlos Gómez         Ingeniería         cgomez@umg.edu.gt          55667788
+USR-10005   Marta Hernández      Medicina           mhernandez@umg.edu.gt      55889900
+USR-10006   Pablo Méndez         Psicología         pmendez@umg.edu.gt         55773412
+USR-10007   Valeria Torres       Administración     vtorres@umg.edu.gt         55334422
+USR-10008   Diego Ramírez        Ingeniería         dramirez@umg.edu.gt        55998800
+USR-10009   Camila Castillo      Derecho            ccastillo@umg.edu.gt       55665544
+USR-10010   Fernando Aguilar     Contaduría         faguilar@umg.edu.gt        55447799
+
+[PRESTAMOS]
+--------------------------------------------------------------------------------
+ID_Prestamo  ID_User    ISBN         Prestado    Devuelto   Activo  Multa
+--------------------------------------------------------------------------------
+PRE-20001    USR-10001  ISBN-220451  01/09/2025  10/09/2025 No      15.00
+PRE-20002    USR-10002  ISBN-320581  02/09/2025  20/09/2025 No      65.00
+PRE-20003    USR-10003  ISBN-520723  05/09/2025  -          Sí      0.00
+PRE-20004    USR-10004  ISBN-420672  06/09/2025  14/09/2025 No      10.00
+PRE-20005    USR-10005  ISBN-120394  10/09/2025  -          Sí      0.00
+PRE-20006    USR-10006  ISBN-520723  12/09/2025  -          Sí      0.00
+PRE-20007    USR-10007  ISBN-720954  13/09/2025  23/09/2025 No      30.00
+PRE-20008    USR-10008  ISBN-820105  15/09/2025  25/09/2025 No      25.00
+PRE-20009    USR-10009  ISBN-102307  18/09/2025  -          Sí      0.00
+PRE-20010    USR-10010  ISBN-620899  20/09/2025  29/09/2025 No      10.00
+PRE-20011    USR-10002  ISBN-720954  22/09/2025  -          Sí      0.00
+PRE-20012    USR-10003  ISBN-120394  23/09/2025  -          Sí      0.00
+PRE-20013    USR-10007  ISBN-420672  25/09/2025  -          Sí      0.00
+PRE-20014    USR-10001  ISBN-102307  27/09/2025  10/10/2025 No      35.00
+PRE-20015    USR-10009  ISBN-920206  30/09/2025  -          Sí      0.00
+
+[ESTADISTICAS]
+--------------------------------------------------------------------------------
+
+- Top 5 Libros más prestados:
+--------------------------------------------------------------------------------
+Rank  ISBN         Titulo                        Autor                   Anio  Categoria      Prestamos
+--------------------------------------------------------------------------------
+1 (mejor)  ISBN-520723  Harry Potter y la piedra filosofal J.K. Rowling        1997  Fantasía     2
+2           ISBN-420672  La sombra del viento      Carlos Ruiz Zafón        2001  Misterio      2
+3           ISBN-720954  El señor de los anillos   J.R.R. Tolkien           1954  Fantasía      2
+4           ISBN-120394  Cien años de soledad      Gabriel García Márquez   1967  Novela        2
+5 (peor)    ISBN-102307  Orgullo y prejuicio       Jane Austen              1813  Romance       2
+
+- Top 5 Usuarios con más préstamos:
+--------------------------------------------------------------------------------
+Rank  ID         Nombre            Carrera         Correo                      Telefono     Prestamos
+--------------------------------------------------------------------------------
+1 (mejor)  USR-10002  Luis Martínez       Arquitectura   lmartinez@umg.edu.gt     55789022    2
+2           USR-10003  Sofía Pérez         Derecho        sofia.perez@umg.edu.gt   55441133    2
+3           USR-10007  Valeria Torres      Administración vtorres@umg.edu.gt      55334422    2
+4           USR-10001  Ana López           Ingeniería     ana.lopez@umg.edu.gt    55670011    2
+5 (peor)    USR-10009  Camila Castillo     Derecho        ccastillo@umg.edu.gt    55665544    2
+
+- Top por disponibilidad (mayor → menor):
+--------------------------------------------------------------------------------
+Rank  ISBN         Titulo                        Autor                   Anio  Categoria        Cant
+--------------------------------------------------------------------------------
+1 (mejor)  ISBN-720954  El señor de los anillos   J.R.R. Tolkien           1954  Fantasía         5
+2           ISBN-102307  Orgullo y prejuicio      Jane Austen              1813  Romance          4
+3           ISBN-420672  La sombra del viento     Carlos Ruiz Zafón        2001  Misterio         4
+4           ISBN-920206  La Odisea                Homero                   -800  Épico            3
+5 (peor)    ISBN-320581  Don Quijote de la Mancha Miguel de Cervantes      1605  Clásico          0
+
+(Fin del reporte)
